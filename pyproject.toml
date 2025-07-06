@@ -1,0 +1,18 @@
+[project]
+name = "koder"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "mohwits@gmail.com"}
+]
+license = {text = "Apache-2.0 license"}
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "openai (>=1.93.0,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
