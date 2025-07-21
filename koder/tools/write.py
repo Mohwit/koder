@@ -1,3 +1,10 @@
+"""Utility functions for creating new code files.
+
+This module provides the create_code_file helper that writes code to disk,
+automatically resolving relative paths against the CODE_REPO_PATH
+environment variable and ensuring parent directories exist.
+"""
+
 import os
 from dotenv import load_dotenv
 
@@ -5,7 +12,8 @@ load_dotenv()
 
 CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
 
-def create_code_file(file_path, code):
+
+def create_code_file(file_path: str, code: str) -> str:
     """
     Creates a new file at the given file path and embeds it in ChromaDB.
     Automatically resolves relative paths to absolute paths using CODE_REPO_PATH.
@@ -19,7 +27,7 @@ def create_code_file(file_path, code):
     """
     # Convert relative path to absolute path if needed
     if not os.path.isabs(file_path):
-        file_path = os.path.join(os.getenv("CODE_REPO_PATH"), file_path.lstrip('/'))
+        file_path = os.path.join(os.getenv("CODE_REPO_PATH"), file_path.lstrip("/"))
 
     # Ensure the parent directories exist
     directory = os.path.dirname(file_path)
@@ -29,19 +37,10 @@ def create_code_file(file_path, code):
     # Write the code to the file
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(code)
-    
+
     return f"File created at: {file_path}\n"
 
 
 # Example usage:
 if __name__ == "__main__":
-    new_code = (
-        "def hello_world():\n"
-        "    print('Hello, world!')\n"
-        "\n"
-        "if __name__ == '__main__':\n"
-        "    hello_world()\n"
-    )
-    file_path = "/Users/msingh/Desktop/Demo/pepsico/PoseEstimation-Activity-Classification-master"  # Example file path.
-    result = create_code_file(file_path, new_code)
-    print(result)
+    pass

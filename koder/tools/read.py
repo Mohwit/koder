@@ -5,13 +5,17 @@ and path resolution.
 """
 
 import os
+from typing import Optional
 from dotenv import load_dotenv
 
 load_dotenv()
 
-CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
+CODE_REPO_PATH = os.getcwd()
 
-def read_code_file(file_path, start_line=None, end_line=None):
+
+def read_code_file(
+    file_path: str, start_line: Optional[int] = None, end_line: Optional[int] = None
+) -> str:
     """
     Read and retrieve code content from a file. Can read either the entire file
     or a specific range of lines. Useful for inspecting existing code, understanding
@@ -44,47 +48,35 @@ def read_code_file(file_path, start_line=None, end_line=None):
     try:
         # Convert relative path to absolute path if needed
         if not os.path.isabs(file_path):
-            file_path = os.path.join(os.getenv("CODE_REPO_PATH"), file_path.lstrip('/'))
-        
-        with open(file_path, 'r', encoding='utf-8') as file:
+            file_path = os.path.join(CODE_REPO_PATH, file_path.lstrip("/"))
+
+        with open(file_path, "r", encoding="utf-8") as file:
             if start_line is None and end_line is None:
                 return file.read()
-            
+
             # Convert to 0-based indexing
             start = (start_line - 1) if start_line else 0
-            
+
             # Read all lines
             lines = file.readlines()
-            
+
             if start_line and start_line < 1:
                 raise ValueError("start_line must be greater than 0")
             if end_line and end_line > len(lines):
                 raise ValueError(f"end_line exceeds file length of {len(lines)} lines")
             if start_line and end_line and start_line > end_line:
                 raise ValueError("start_line cannot be greater than end_line")
-                
+
             # Select specified range
             selected_lines = lines[start:end_line]
-            return ''.join(selected_lines)
-            
-    except FileNotFoundError:
-        raise FileNotFoundError(f"File not found at path: {file_path}")
+            return "".join(selected_lines)
+
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(f"File not found at path: {file_path}") from exc
     except IOError as e:
-        raise IOError(f"Error reading file {file_path}: {str(e)}")
+        raise IOError(f"Error reading file {file_path}: {str(e)}") from e
 
 
 if __name__ == "__main__":
     # Example usage
-    try:
-        file_path = "../sephora-tiktok-trends-main/backend/invertedIndexData/InvertedIndex.py"
-        # Read entire file
-        content = read_code_file(file_path)
-        print("Complete file content:")
-        print(content)
-        
-        # Read specific line range
-        content = read_code_file(file_path, start_line=12, end_line=22)
-        print("\nContent from lines 12-22:")
-        print(content)
-    except (FileNotFoundError, IOError, ValueError) as e:
-        print(f"Error: {e}")
+    pass

@@ -1,7 +1,12 @@
-from dotenv import load_dotenv
+"""System prompt for the Koder agent."""
+
 import os
+
+from dotenv import load_dotenv
+
 load_dotenv()
 
+## System prompt
 system_prompt = f"""
 You are a powerful agentic AI coding assistant designed by Mohit - an AI Engineer based in India.
 
@@ -69,6 +74,6 @@ When making code changes, NEVER output code to the USER, unless requested. Inste
 </debugging>
 
 <codebase_path>
-{os.getenv("CODE_REPO_PATH")}
+{os.getcwd()}
 </codebase_path>    
-"""     
+"""
