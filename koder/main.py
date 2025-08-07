@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 from koder.agent.agent import Agent
 from koder.prompts.main_agent_prompt import system_prompt
-from koder.tools.tools_schema import tools_schema
+from koder.tools.main_agent_tools_schema import tools_schema
 from koder.utils.inialize_code_rag import initialize_code_rag
 
 load_dotenv()

@@ -130,12 +130,17 @@ class Agent:
             else:
                 print("✅ Success")
 
+            # Ensure tool response is a string for OpenAI API compatibility
+            tool_response_content = tool_call_response["tool_response"]
+            if not isinstance(tool_response_content, str):
+                tool_response_content = json.dumps(tool_response_content, indent=2)
+            
             self.messages.append(
                 {
                     "role": "tool",
                     "tool_call_id": tool_call_response["tool_call_id"],
                     "name": tool_call_response["tool_name"],
-                    "content": tool_call_response["tool_response"],
+                    "content": tool_response_content,
                 }
             )
 
