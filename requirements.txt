@@ -1,9 +1,12 @@
 annotated-types==0.7.0
 anthropic==0.49.0
 anyio==4.9.0
+apsw==3.50.4.0
+apswutils==0.1.0
 asgiref==3.9.1
 backoff==2.2.1
 bcrypt==4.3.0
+beautifulsoup4==4.13.4
 black==25.1.0
 build==1.2.2.post1
 cachetools==5.5.2
@@ -12,12 +15,14 @@ charset-normalizer==3.4.2
 chroma-hnswlib==0.7.6
 chromadb==0.6.3
 click==8.2.1
-coderag==0.1.0
+coderag @ file:///Users/msingh/Desktop/dynamic_talk/koder/coderag-0.1.0-py3-none-any.whl#sha256=66a058a87263d88a149add94715dc4dcde4f0e8dbcc38cefc6e62074a8db16e7
 coloredlogs==15.0.1
 distro==1.9.0
 durationpy==0.10
 exceptiongroup==1.3.0
 fastapi==0.116.1
+fastcore==1.8.7
+fastlite==0.2.1
 filelock==3.18.0
 flatbuffers==25.2.10
 fsspec==2025.7.0
@@ -34,6 +39,7 @@ humanfriendly==10.0
 idna==3.10
 importlib_metadata==8.7.0
 importlib_resources==6.5.2
+itsdangerous==2.2.0
 Jinja2==3.1.6
 jiter==0.10.0
 joblib==1.5.1
@@ -43,6 +49,7 @@ MarkupSafe==3.0.2
 mdurl==0.1.2
 mmh3==5.1.0
 mpmath==1.3.0
+mypy==1.17.0
 mypy_extensions==1.1.0
 networkx==3.4.2
 numpy==2.2.6
@@ -79,6 +86,8 @@ PyPika==0.48.9
 pyproject_hooks==1.2.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
+python-fasthtml==0.12.22
+python-multipart==0.0.20
 PyYAML==6.0.2
 regex==2024.11.6
 requests==2.32.4
@@ -86,6 +95,7 @@ requests-oauthlib==2.0.0
 rerankers==0.9.1.post1
 rich==14.0.0
 rsa==4.9.1
+ruff==0.12.4
 safetensors==0.5.3
 scikit-learn==1.7.1
 scipy==1.15.3
@@ -93,6 +103,7 @@ sentence-transformers==4.1.0
 shellingham==1.5.4
 six==1.17.0
 sniffio==1.3.1
+soupsieve==2.7
 starlette==0.47.2
 sympy==1.14.0
 tenacity==9.1.2
@@ -113,8 +124,8 @@ typing_extensions==4.14.1
 urllib3==2.5.0
 uvicorn==0.35.0
 uvloop==0.21.0
+watchfiles==0.21.0
 websocket-client==1.8.0
 websockets==15.0.1
 wrapt==1.17.2
 zipp==3.23.0
-watchfiles==0.21.0

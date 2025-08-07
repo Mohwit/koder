@@ -95,3 +95,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+## vector db
+vector_db/

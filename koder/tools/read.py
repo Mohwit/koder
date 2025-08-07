@@ -76,7 +76,6 @@ def read_code_file(
     except IOError as e:
         raise IOError(f"Error reading file {file_path}: {str(e)}") from e
 
-
 if __name__ == "__main__":
     # Example usage
     pass

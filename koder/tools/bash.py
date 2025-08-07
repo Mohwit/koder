@@ -1,161 +1,228 @@
-"""
-This tool is used to execute bash commands safely with proper error handling.
-It can run various shell commands and return their output.
-"""
+"""Execute bash commands with enhanced safety and output processing."""
 
 import os
+import platform
+import re
 import subprocess
-from typing import Optional
+import time
+from typing import Dict
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 CODE_REPO_PATH = os.getcwd()
 
+# Common directories to exclude from file searches
+EXCLUDE_DIRS = [
+    ".venv",
+    "venv",
+    "env",  # Python virtual environments
+    "node_modules",  # Node.js dependencies
+    ".git",  # Git repository data
+    "__pycache__",  # Python cache
+    ".pytest_cache",  # Pytest cache
+    ".mypy_cache",  # MyPy cache
+    "build",
+    "dist",  # Build artifacts
+    ".coverage",  # Coverage data
+    ".tox",  # Tox environments
+    ".idea",
+    ".vscode",  # IDE files
+    "*.egg-info",  # Python package info
+    ".DS_Store",  # macOS files
+    "vector_db",  # Vector database (project specific)
+]
 
-def execute_bash_command(
-    command: str,
-    working_directory: Optional[str] = None,
-    timeout: int = 30,
-    capture_output: bool = True,
-) -> str:
+
+def _modify_find_command(command: str) -> str:
     """
-    Execute a bash command safely and return the result.
+    Modify find commands to exclude common non-code directories and use relative paths.
 
     Parameters:
-        command (str): The bash command to execute
-        working_directory (str, optional): Directory to run command in (defaults to CODE_REPO_PATH)
-        timeout (int): Timeout in seconds for command execution
-        capture_output (bool): Whether to capture and return command output
+        command (str): The original command
 
     Returns:
-        str: Command output and execution details
-
-    Raises:
-        ValueError: If command is empty or contains dangerous operations
-        IOError: If command execution fails
+        str: Modified command with exclusions
     """
-    try:
-        if not command or not command.strip():
-            raise ValueError("Command cannot be empty")
 
-        # Basic security checks
-        dangerous_commands = [
-            "rm -rf /",
-            "rm -rf *",
-            "dd if=",
-            "mkfs",
-            "fdisk",
-            "chmod -R 777",
-            "sudo rm",
-            "sudo dd",
-            "sudo mkfs",
-            "sudo fdisk",
-            "> /dev/null; rm",
-            "curl | sh",
-            "wget | sh",
-            "eval",
-            "exec",
-        ]
+    # Check if this is a find command
+    if command.strip().startswith('find '):
+        # Replace absolute project path with current directory
+        project_path = CODE_REPO_PATH
+        if project_path in command:
+            command = command.replace(project_path, '.')
 
-        command_lower = command.lower()
-        for dangerous in dangerous_commands:
-            if dangerous in command_lower:
-                raise ValueError(f"Potentially dangerous command blocked: {command}")
+        # Add exclusions for common directories
+        exclusion_parts = []
+        for exclude_dir in EXCLUDE_DIRS:
+            exclusion_parts.append(f'-not -path "*/{exclude_dir}/*"')
 
-        # Set working directory
-        if working_directory:
-            if not os.path.isabs(working_directory):
-                cwd = os.path.join(CODE_REPO_PATH, working_directory.lstrip("/"))
+        exclusions = ' '.join(exclusion_parts)
+
+        # Insert exclusions after the find path but before other arguments
+        find_parts = command.split(' ', 2)
+        if len(find_parts) >= 2:
+            if len(find_parts) == 2:
+                # Just "find path"
+                modified_command = f"{find_parts[0]} {find_parts[1]} {exclusions}"
             else:
-                cwd = working_directory
+                # "find path other_args"
+                modified_command = (
+                    f"{find_parts[0]} {find_parts[1]} {exclusions} {find_parts[2]}"
+                )
         else:
-            cwd = CODE_REPO_PATH
+            modified_command = command
 
-        if not os.path.exists(cwd):
-            raise FileNotFoundError(f"Working directory not found: {cwd}")
+        return modified_command
 
-        # Execute command
-        result = subprocess.run(
-            command,
-            shell=True,
-            cwd=cwd,
-            capture_output=capture_output,
-            text=True,
-            timeout=timeout,
-            env=os.environ.copy(),
-            check=False,
-        )
-
-        # Format output
-        output_lines = []
-        output_lines.append(f"Command: {command}")
-        output_lines.append(f"Working Directory: {cwd}")
-        output_lines.append(f"Exit Code: {result.returncode}")
-        output_lines.append("-" * 50)
-
-        if capture_output:
-            if result.stdout:
-                output_lines.append("STDOUT:")
-                output_lines.append(result.stdout)
-
-            if result.stderr:
-                output_lines.append("STDERR:")
-                output_lines.append(result.stderr)
-
-        if result.returncode != 0:
-            output_lines.append(f"⚠️  Command failed with exit code {result.returncode}")
-        else:
-            output_lines.append("✅ Command executed successfully")
-
-        return "\n".join(output_lines)
-
-    except (OSError, ValueError, FileNotFoundError) as e:
-        raise IOError(f"Error executing command '{command}': {str(e)}") from e
+    return command
 
 
-def get_system_info() -> str:
+def _is_command_safe(command: str) -> tuple[bool, str]:
     """
-    Get basic system information.
+    Check if a command is safe to execute.
+
+    Parameters:
+        command (str): The command to check
 
     Returns:
-        str: System information including OS, Python version, etc.
+        tuple[bool, str]: (is_safe, reason_if_not_safe)
     """
+
+    # List of dangerous commands/patterns
+    dangerous_patterns = [
+        r'\brm\s+-rf\s*/',  # rm -rf / (and variations)
+        r'\bsudo\s+rm',  # sudo rm
+        r'\bchmod\s+777',  # chmod 777
+        r'\bchown\s+',  # chown commands
+        r'\bmkfs\.',  # filesystem creation
+        r'\bdd\s+if=',  # dd command
+        r'\b>\s*/dev/',  # writing to device files
+        r'\bmount\b',  # mount commands
+        r'\bumount\b',  # umount commands
+        r'\bfdisk\b',  # fdisk
+        r'\bparted\b',  # parted
+        r'\biptables\b',  # iptables
+        r'\bsystemctl\b',  # systemctl
+        r'\bservice\b',  # service control
+        r'\breboot\b',  # reboot
+        r'\bshutdown\b',  # shutdown
+        r'\bhalt\b',  # halt
+        r'\bpoweroff\b',  # poweroff
+        r'\bcrontab\s+-r',  # crontab deletion
+        r'\>/etc/',  # writing to etc
+        r'\>/usr/',  # writing to usr
+        r'\>/bin/',  # writing to bin
+        r'\>/sbin/',  # writing to sbin
+    ]
+
+    for pattern in dangerous_patterns:
+        if re.search(pattern, command, re.IGNORECASE):
+            reason = f"Command contains dangerous pattern: {pattern}"
+            return False, reason
+
+    # Check for file operations outside the project directory
+    if any(op in command for op in ['rm ', 'mv ', 'cp ', '>', '>>']):
+        # Allow operations within project directory
+        if not any(
+            safe_indicator in command
+            for safe_indicator in ['./', '../', CODE_REPO_PATH]
+        ):
+            # Check if command contains absolute paths outside project
+            abs_path_pattern = r'/[a-zA-Z]+'
+            matches = re.findall(abs_path_pattern, command)
+            for match in matches:
+                if not match.startswith(CODE_REPO_PATH):
+                    reason = f"File operation outside project directory: {match}"
+                    return False, reason
+
+    return True, ""
+
+
+def execute_bash_command(command: str, timeout: int = 30) -> str:
+    """
+    Execute a bash command safely with timeout and error handling.
+
+    Args:
+        command: The bash command to execute
+        timeout: Maximum execution time in seconds
+
+    Returns:
+        str: Command output or error message
+    """
+    start_time = time.time()
+
     try:
-        info_commands = [
-            ("OS Info", "uname -a"),
-            ("Python Version", "python --version"),
-            ("Current Directory", "pwd"),
-            ("Current User", "whoami"),
-            ("Available Disk Space", "df -h"),
-            ("Memory Usage", "free -h"),
-        ]
+        # Safety check
+        is_safe, reason = _is_command_safe(command)
+        if not is_safe:
+            error_msg = f"Command blocked for security reasons: {reason}"
+            return error_msg
 
-        results = []
-        for title, cmd in info_commands:
-            try:
-                result = subprocess.run(
-                    cmd,
-                    shell=True,
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                    cwd=CODE_REPO_PATH,
-                    check=False,
-                )
+        # Modify find commands to exclude common directories
+        modified_command = _modify_find_command(command)
 
-                if result.returncode == 0:
-                    results.append(f"{title}: {result.stdout.strip()}")
-                else:
-                    results.append(f"{title}: N/A")
+        # Change to the code repository directory
+        original_cwd = os.getcwd()
+        os.chdir(CODE_REPO_PATH)
 
-            except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
-                results.append(f"{title}: N/A")
+        try:
+            # Execute the command
 
-        return "\n".join(results)
+            result = subprocess.run(
+                modified_command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=CODE_REPO_PATH,
+            )
 
-    except (OSError, subprocess.SubprocessError) as e:
-        return f"Error getting system info: {str(e)}"
+            # Check if command was successful
+            if result.returncode == 0:
+                output = result.stdout.strip()
+                output_length = len(output)
+
+                if output_length > 10000:  # Log warning for very long outputs
+                    pass  # Removed logging
+
+                # Limit output size to prevent overwhelming the agent
+                if len(output) > 5000:
+                    truncated_output = (
+                        output[:5000]
+                        + f"\n... [Output truncated. Total length: {len(output)} characters]"
+                    )
+                    return truncated_output
+
+                return output if output else "Command executed successfully (no output)"
+            else:
+                error_output = result.stderr.strip()
+                return f"Command failed with return code {result.returncode}:\n{error_output}"
+
+        finally:
+            # Always restore the original directory
+            os.chdir(original_cwd)
+
+    except subprocess.TimeoutExpired:
+        error_msg = f"Command timed out after {timeout} seconds"
+        return error_msg
+    except subprocess.CalledProcessError as e:
+        error_msg = f"Command failed: {str(e)}"
+        return error_msg
+    except Exception as e:
+        error_msg = f"Error executing command: {str(e)}"
+        return error_msg
+
+
+def get_system_info() -> Dict[str, str]:
+    """Get basic system information."""
+    return {
+        "platform": platform.system(),
+        "architecture": platform.machine(),
+        "python_version": platform.python_version(),
+        "current_directory": os.getcwd(),
+    }
 
 
 def list_processes() -> str:
@@ -195,12 +262,9 @@ if __name__ == "__main__":
     try:
         # Test basic command
         OUTPUT = execute_bash_command("ls -la")
-        print(OUTPUT)
 
         # Test system info
-        print("\n" + "=" * 50)
-        print("System Info:")
-        print(get_system_info())
+        get_system_info()
 
-    except (OSError, subprocess.SubprocessError, ValueError) as e:
-        print(f"Error: {e}")
+    except (OSError, subprocess.SubprocessError, ValueError):
+        pass
