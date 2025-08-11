@@ -25,3 +25,29 @@ exclude = '''
   | dist
 )/
 '''
+
+# Minimal PEP 621 project metadata and CLI entry point
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "koder"
+version = "0.1.0"
+description = "Koder: interactive coding assistant CLI"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Koder" }
+]
+
+# Keep dependencies minimal here to avoid duplication with requirements.txt.
+# Install deps via requirements.txt first when developing.
+dependencies = []
+
+[project.urls]
+Homepage = "https://example.com/koder"
+
+[project.scripts]
+koder = "koder.main:main"

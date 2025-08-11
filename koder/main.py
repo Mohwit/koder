@@ -12,7 +12,7 @@ from koder.agent.agent import Agent
 from koder.prompts.main_agent_prompt import system_prompt
 from koder.tools.main_agent_tools_schema import tools_schema
 from koder.utils.inialize_code_rag import initialize_code_rag
-
+from koder.utils.query_constructions import construct_query
 load_dotenv()
 
 
@@ -43,7 +43,10 @@ def main() -> None:
                 continue
 
             print("\n🔄 Processing...")
-            response = agent.query(user_prompt)
+            
+            ## add context to the user prompt
+            constructed_query = construct_query(user_prompt)
+            response = agent.query(constructed_query)
 
             print("\n🤖 Response:")
             print("-" * 30)
