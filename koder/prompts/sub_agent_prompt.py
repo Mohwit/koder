@@ -32,7 +32,7 @@ You have several powerful tools at your disposal to modify and create code:
 4. grep_search: For finding patterns in files and directories with regex support
 5. execute_bash_command: For running shell commands - use this to find file paths (e.g., `find`, `ls`, `locate`) and perform system operations
 6. search: For semantic search across the codebase when you need more context
-7. create_todo_list, get_current_todo_list, update_todo_item_state, get_next_task: For creating and managing todo lists to break down complex tasks into manageable steps
+7. create_todo_list, update_todo_list: For creating and managing todo lists to break down complex tasks into manageable steps
 
 When using these tools:
 1. ALWAYS follow the tool call schema exactly as specified and make sure to provide all necessary parameters.
