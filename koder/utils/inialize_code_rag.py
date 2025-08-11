@@ -13,7 +13,7 @@ load_dotenv()
 _repo_container: dict[str, Repository | None] = {"instance": None}
 
 
-def initialize_code_rag() -> None:
+def initialize_code_rag(status_callback=None) -> None:
     """Initialize the code repository and vector store."""
     code_repo_path = os.getcwd()
     vector_store_path = os.path.join(code_repo_path, "vector_db")
@@ -30,17 +30,30 @@ def initialize_code_rag() -> None:
 
     # Initialize the repository
     stats = _repo_container["instance"].index()
-    print(f"Indexed {stats['total_chunks']} chunks from {stats['indexed_files']} files")
-    print(f"Vector store path: {vector_store_path}")
+    
+    # Send status updates
+    index_msg = f"Indexed {stats['total_chunks']} chunks from {stats['indexed_files']} files"
+    vector_msg = f"Vector store path: {vector_store_path}"
+    
+    if status_callback:
+        status_callback(index_msg)
+        status_callback(vector_msg)
+    else:
+        print(index_msg)
+        print(vector_msg)
 
     # Start watching for file changes in the *same* thread
-    _watch_repository_for_changes(code_repo_path, _repo_container["instance"])
+    _watch_repository_for_changes(code_repo_path, _repo_container["instance"], status_callback)
 
 
-def _watch_repository_for_changes(repo_path: str, repo: Repository) -> None:
+def _watch_repository_for_changes(repo_path: str, repo: Repository, status_callback=None) -> None:
     """Watch *repo_path* for file changes using *watchfiles* and re-index when they occur."""
 
-    print("👀  Starting watchfiles-based file watcher …")
+    watcher_msg = "👀  Starting watchfiles-based file watcher …"
+    if status_callback:
+        status_callback(watcher_msg)
+    else:
+        print(watcher_msg)
 
     for changes in watch(repo_path):
         # *changes* is a set of (Change, path) tuples
@@ -49,11 +62,18 @@ def _watch_repository_for_changes(repo_path: str, repo: Repository) -> None:
         if not relevant:
             continue  # Only vector store files changed → ignore
 
-        print(f"🔄  Detected {len(relevant)} change(s) – re-indexing …")
+        detected_msg = f"🔄  Detected {len(relevant)} change(s) – re-indexing …"
+        if status_callback:
+            status_callback(detected_msg)
+        else:
+            print(detected_msg)
+            
         stats = repo.index()
-        print(
-            f"✅  Re-indexed {stats['total_chunks']} chunks from {stats['indexed_files']} files"
-        )
+        reindexed_msg = f"✅  Re-indexed {stats['total_chunks']} chunks from {stats['indexed_files']} files"
+        if status_callback:
+            status_callback(reindexed_msg)
+        else:
+            print(reindexed_msg)
 
 
 # Public accessor for other modules
