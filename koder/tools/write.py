@@ -25,6 +25,11 @@ def create_code_file(file_path: str, code: str) -> str:
     Returns:
         tuple: (success message, file content)
     """
+    # Ask for confirmation before proceeding
+    user_input = input("Type 'Y' or 'y' to execute the command: ").strip().lower()
+    if user_input != 'y':
+        return "Command not executed: user did not confirm."
+
     # Convert relative path to absolute path if needed
     if not os.path.isabs(file_path):
         file_path = os.path.join(os.getenv("CODE_REPO_PATH"), file_path.lstrip("/"))

@@ -5,7 +5,7 @@ import platform
 import re
 import subprocess
 import time
-from typing import Dict
+from typing import Dict, Optional
 
 from dotenv import load_dotenv
 
@@ -140,7 +140,10 @@ def _is_command_safe(command: str) -> tuple[bool, str]:
     return True, ""
 
 
-def execute_bash_command(command: str, timeout: int = 30) -> str:
+def execute_bash_command(
+    command: str,
+    timeout: int = 30,
+) -> str:
     """
     Execute a bash command safely with timeout and error handling.
 
@@ -159,6 +162,12 @@ def execute_bash_command(command: str, timeout: int = 30) -> str:
         if not is_safe:
             error_msg = f"Command blocked for security reasons: {reason}"
             return error_msg
+
+        # Interactive confirmation
+        user_input = input("Type 'Y' or 'y' to execute the command: ").strip().lower()
+        if user_input != 'y':
+            return "Command not executed: user did not confirm."
+    
 
         # Modify find commands to exclude common directories
         modified_command = _modify_find_command(command)

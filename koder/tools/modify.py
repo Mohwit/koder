@@ -27,6 +27,11 @@ def modify_code_file(file_path: str, edits: List[Dict[str, str]]) -> str:
         Exception: If file operations fail
     """
 
+    # Ask for confirmation before proceeding
+    user_input = input("Type 'Y' or 'y' to execute the command: ").strip().lower()
+    if user_input != 'y':
+        return "Command not executed: user did not confirm."
+
     # Validate inputs
     if not file_path:
         raise ValueError("file_path is required")
