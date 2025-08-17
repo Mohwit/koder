@@ -9,7 +9,6 @@ from typing import Dict, Optional
 
 from dotenv import load_dotenv
 from rich.console import Console
-from rich.panel import Panel
 
 load_dotenv()
 
@@ -246,14 +245,8 @@ def execute_bash_command(
         if not is_read_only:
             # Interactive confirmation only for write/destructive commands
             console = Console()
-            panel = Panel(
-                f"[bold]Tool:[/bold] execute_bash_command\n[bold]Command:[/bold] {command}",
-                title="🛠️ Tool Confirmation",
-                border_style="bright_red",
-                padding=(0, 1)
-            )
-            console.print(panel)
-            user_input = console.input("[bold yellow]Type 'Y' or 'y' to execute this command:[/bold yellow] ").strip().lower()
+            console.print(f"[yellow]\nExecute:[/yellow] [dim]{command}[/dim]")
+            user_input = console.input("[yellow]Continue? (y/n):[/yellow] ").strip().lower()
             if user_input != 'y':
                 return "Command not executed: user did not confirm."
         # Read-only commands execute automatically without confirmation
@@ -281,11 +274,7 @@ def execute_bash_command(
             # Check if command was successful
             if result.returncode == 0:
                 output = result.stdout.strip()
-                output_length = len(output)
-
-                if output_length > 10000:  # Log warning for very long outputs
-                    pass  # Removed logging
-
+                
                 # Limit output size to prevent overwhelming the agent
                 if len(output) > 5000:
                     truncated_output = (

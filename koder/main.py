@@ -13,6 +13,7 @@ from koder.prompts.main_agent_prompt import system_prompt
 from koder.tools.main_agent_tools_schema import tools_schema
 from koder.utils.inialize_code_rag import initialize_code_rag
 from koder.utils.query_constructions import construct_query
+
 load_dotenv()
 
 
@@ -21,7 +22,7 @@ def main() -> None:
     threading.Thread(target=initialize_code_rag, daemon=True).start()
     # Create the agent with proper configuration
     agent = Agent(
-        model="claude-3-7-sonnet-20250219",
+        model="claude-sonnet-4-20250514",
         base_url="https://api.anthropic.com/v1",
         api_key=os.getenv("ANTHROPIC_API_KEY"),
         system_prompt=system_prompt,
@@ -44,7 +45,7 @@ def main() -> None:
 
             print("\n🔄 Processing...")
             
-            ## add context to the user prompt
+            # Add context to the user prompt
             constructed_query = construct_query(user_prompt)
             response = agent.query(constructed_query)
 

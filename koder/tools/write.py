@@ -21,7 +21,7 @@ except ImportError:
 
 load_dotenv()
 
-CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
+# Use current working directory instead of environment variable
 
 
 def _display_code_preview(file_path: str, code: str):
@@ -65,15 +65,12 @@ def _display_code_preview(file_path: str, code: str):
     content.append("\n")
     content.append(syntax_highlighted)
     
-    # Display in a panel
-    panel = Panel(
-        content,
-        title="💾 Code Preview",
-        border_style="green",
-        padding=(1, 2),
-        expand=True
-    )
-    console.print(panel)
+    # Display with simple formatting
+    console.print()
+    console.print("[bold green]💾 Code Preview[/bold green]")
+    console.print("[dim]" + "─" * 50 + "[/dim]")
+    console.print(content)
+    console.print("[dim]" + "─" * 50 + "[/dim]")
 
 
 def create_code_file(file_path: str, code: str) -> str:
@@ -90,17 +87,14 @@ def create_code_file(file_path: str, code: str) -> str:
     """
     # Convert relative path to absolute path if needed
     if not os.path.isabs(file_path):
-        code_repo_path = os.getenv("CODE_REPO_PATH")
-        if code_repo_path is None:
-            # Default to current working directory if CODE_REPO_PATH is not set
-            code_repo_path = os.getcwd()
+        code_repo_path = os.getcwd()
         file_path = os.path.join(code_repo_path, file_path.lstrip("/"))
 
     # Display code preview
     _display_code_preview(file_path, code)
     
     # Ask for confirmation before proceeding
-    user_input = input("Type 'Y' or 'y' to execute the command: ").strip().lower()
+    user_input = input("Create file? (y/n): ").strip().lower()
     if user_input != 'y':
         return "Command not executed: user did not confirm."
 

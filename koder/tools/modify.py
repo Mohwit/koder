@@ -133,17 +133,14 @@ def _display_diff(original_content: str, modified_content: str, file_path: str) 
         return
     
     if RICH_AVAILABLE and console:
-        # Create and display bordered diff
+        # Create and display clean diff
         unified_diff = _create_unified_diff(original_content, modified_content, file_path)
         if unified_diff:
             console.print()
-            bordered_diff = Panel(
-                unified_diff,
-                expand=True,
-                padding=(1, 2),
-                border_style="dim"
-            )
-            console.print(bordered_diff)
+            console.print("[bold cyan]📝 Code Changes[/bold cyan]")
+            console.print("[dim]" + "─" * 50 + "[/dim]")
+            console.print(unified_diff)
+            console.print("[dim]" + "─" * 50 + "[/dim]")
         else:
             print("No changes detected")
     else:

@@ -3,17 +3,11 @@ KODER - An intelligent CLI tool for code understanding and assistance
 """
 
 import click 
-from rich.console import Console
-from rich.panel import Panel
-from rich.align import Align
-from rich.text import Text
-from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.syntax import Syntax
-from rich.table import Table
-from rich.live import Live
-from rich.markdown import Markdown
 import sys
 import os
+import threading
+from rich.console import Console
+from rich.text import Text
 from dotenv import load_dotenv
 
 # Import Agent and tools
@@ -25,6 +19,18 @@ from koder.utils.query_constructions import construct_query
 load_dotenv()
 
 console = Console()
+
+
+def show_tool_executing(tool_name: str, context: str = ""):
+    """Show tool is executing"""
+    console.print(f"  [yellow]→[/yellow] [bold blue]{tool_name}[/bold blue][dim]{context}[/dim]", end="")
+
+def show_tool_complete(status: str = "success", error_msg: str = None):
+    """Show tool completed"""
+    if status == "success":
+        console.print("\r  [green]✓[/green] [bold green]completed[/bold green]")
+    else:
+        console.print(f"\r  [red]✗[/red] [bold red]failed[/bold red] [dim red]({error_msg})[/dim red]")
 
 
 def display_logo():
@@ -41,32 +47,16 @@ def display_logo():
 
 
 def display_welcome():
-    """Display the welcome screen"""
+    """Display the minimal welcome screen"""
     console.clear()
     
-    # Logo
+    # Simple left-aligned logo display
     logo_text = Text(display_logo(), style="bold cyan")
-    logo_panel = Panel(
-        Align.center(logo_text),
-        style="bright_blue",
-        padding=(0, 1)
-    )
+    console.print(logo_text)
     
-    # Tagline
-    tagline = Text("🚀 AI-Powered Code Assistant on Your Terminal", style="bold bright_white")
-    tagline_panel = Panel(
-        Align.center(tagline),
-        style="bright_magenta",
-        padding=(0, 2)
-    )
-    
-    # Display everything
-    console.print(logo_panel)
-    console.print(tagline_panel)
-    
-    # Footer
-    footer = Text("Made for developers | Version 0.1.0", style="italic")
-    console.print(Align.center(footer), style="blue")
+    # Simple left-aligned tagline
+    console.print("[bold bright_white]🚀 AI-Powered Code Assistant[/bold bright_white]")
+    console.print("[dim]Made for developers | Version 0.1.0[/dim]")
     console.print()
     
 def create_agent():
@@ -85,96 +75,43 @@ def create_agent():
         return None
     
 def display_tool_execution(tool_name: str, args: dict, status: str, error_msg: str = None):
-    """Display tool execution with rich formatting"""
-    # Create status icon and color
-    if status == "success":
-        status_icon = "✅"
-        status_color = "green"
-    elif status == "error":
-        status_icon = "❌"
-        status_color = "red"
-    else:  # executing
-        status_icon = "🔄"
-        status_color = "yellow"
-    
-    # Create tool info table
-    table = Table(show_header=False, show_lines=True, box=None, padding=(0, 1))
-    table.add_column("Field", style="bold cyan", width=12)
-    table.add_column("Value", style="white")
-    
-    table.add_row("Tool", f"[bold]{tool_name}[/bold]")
-    table.add_row("Status", f"[{status_color}]{status_icon} {status.title()}[/{status_color}]")
-    
-    # Add arguments if provided
+    """Display simple tool execution"""
+    # Get the main argument for context (typically file_path, command, etc.)
+    main_arg = ""
     if args:
-        for key, value in args.items():
-            # Truncate long values
-            str_value = str(value)
-            if len(str_value) > 50:
-                str_value = str_value[:47] + "..."
-            table.add_row(key.title(), str_value)
+        # Common argument names that provide context
+        context_keys = ['file_path', 'command', 'query', 'path', 'target_file']
+        for key in context_keys:
+            if key in args:
+                value = str(args[key])
+                if len(value) > 60:
+                    value = value[:57] + "..."
+                main_arg = f": {value}"
+                break
     
-    # Add error message if provided
-    if error_msg:
-        table.add_row("Error", f"[red]{error_msg}[/red]")
-    
-    # Display in panel
-    panel = Panel(
-        table,
-        title=f"🛠️  Tool Execution",
-        border_style="bright_blue",
-        padding=(0, 1)
-    )
-    
-    console.print(panel)
+    if status == "executing":
+        show_tool_executing(tool_name, main_arg)
+    else:
+        show_tool_complete(status, error_msg)
 
 
 def display_response(content: str, tool_calls_count: int = 0):
-    """Display agent response with rich formatting"""
+    """Display agent response with minimal formatting"""
     if content.strip():
-        # Try to render as markdown if it looks like markdown
-        if any(marker in content for marker in ['#', '*', '`', '-', '1.']):
-            try:
-                markdown_content = Markdown(content)
-                response_panel = Panel(
-                    markdown_content,
-                    title="🤖 Agent Response",
-                    border_style="bright_green",
-                    padding=(1, 2)
-                )
-            except:
-                # Fallback to plain text if markdown parsing fails
-                response_panel = Panel(
-                    content,
-                    title="🤖 Agent Response",
-                    border_style="bright_green",
-                    padding=(1, 2)
-                )
-        else:
-            response_panel = Panel(
-                content,
-                title="🤖 Agent Response",
-                border_style="bright_green",
-                padding=(1, 2)
-            )
-        
-        console.print(response_panel)
+        # Simple response display without panels
+        console.print(f"\n{content}")
     
-    # Show tool execution summary
+    # Optional: Show minimal tool execution summary
     if tool_calls_count > 0:
-        summary = f"🔧 Executed {tool_calls_count} tool call{'s' if tool_calls_count > 1 else ''}"
-        console.print(f"[dim]{summary}[/dim]")
+        console.print(f"[dim]→ {tool_calls_count} tool{'s' if tool_calls_count > 1 else ''} executed[/dim]")
 
 
 def interactive_mode():
     """Run interactive mode with continuous conversation"""
-    console.print(Panel(
-        "[bold cyan]🎯 Interactive Mode[/bold cyan]\n"
-        "Type your questions and I'll help you with your code!\n"
-        "Commands: [bold]'quit', 'exit', 'q'[/bold] to exit | [bold]'clear'[/bold] to clear screen",
-        title="Welcome to KODER",
-        border_style="bright_blue"
-    ))
+    console.print("[bold cyan]🎯 Interaction [/bold cyan]")
+    console.print("Type your questions and I'll help you with your code!")
+    console.print("[dim]Commands: 'quit', 'exit', 'q' to exit | 'clear' to clear screen[/dim]")
+    console.print()
     
     agent = create_agent()
     
@@ -198,10 +135,10 @@ def interactive_mode():
             
             
             # Process without status spinner for interactive tools
-            console.print("\n[bold yellow]🔄 Processing...[/bold yellow]")
+            console.print("\n[bold yellow]🔄 Processing...[/bold yellow]\n")
             ## Construct the query
             query = construct_query(user_prompt)
-            console.print(f"[bold yellow]🔍 Query:[/bold yellow] {user_prompt}")
+
             
             # Override the agent's tool processing to show better UI
             original_process_tool_calls = agent._process_tool_calls
@@ -217,18 +154,18 @@ def interactive_mode():
                     except json.JSONDecodeError:
                         args = {}
                     
-                    # Execute the tool
-                    tool_call_response = agent._execute_tool_call(tool_call)
+                    # Show executing
+                    display_tool_execution(tool_name, args, "executing")
                     
                     # Execute the tool
                     tool_call_response = agent._execute_tool_call(tool_call)
                     
+                    # Show completion
                     response_str = str(tool_call_response["tool_response"])
                     if (response_str.startswith("Error:") or 
                         response_str.startswith("Error executing tool") or 
                         response_str.startswith("Error parsing tool arguments")):
                         display_tool_execution(tool_name, args, "error", response_str)
-                    
                     else:
                         display_tool_execution(tool_name, args, "success")
                     

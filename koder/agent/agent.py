@@ -7,13 +7,23 @@ from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from openai._types import NOT_GIVEN
 from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
 
 console = Console()
 
 
-## Agent class
+def show_tool_executing(tool_name: str, context: str = ""):
+    """Show tool is executing"""
+    console.print(f"  [yellow]→[/yellow] [bold blue]{tool_name}[/bold blue][dim]{context}[/dim]", end="")
+
+def show_tool_complete(status: str = "success", error_msg: str = None):
+    """Show tool completed"""
+    if status == "success":
+        console.print("\r  [green]✓[/green] [bold green]completed[/bold green]")
+    else:
+        console.print(f"\r  [red]✗[/red] [bold red]failed[/bold red] [dim red]({error_msg})[/dim red]")
+
+
+# Agent class
 class Agent:
     """OpenAI API client with tool calling and conversation management."""
 
@@ -89,8 +99,8 @@ class Agent:
         
         console.print("└" + "─" * (len(task_desc) + 5))
 
-    ## Query the agent with the provided user prompt.
-    ## Continues conversation until final response is received.
+    # Query the agent with the provided user prompt.
+    # Continues conversation until final response is received.
     def query(self, user_prompt: str) -> Dict[str, Any]:
         """
         Query the agent with the provided user prompt.
@@ -121,7 +131,7 @@ class Agent:
             
             return final_response
 
-    ## Make an API call to the OpenAI client.
+    # Make an API call to the OpenAI client.
     def _make_api_call(self) -> Any:
         """
         Make an API call to the OpenAI client.
@@ -149,7 +159,7 @@ class Agent:
             tools=clean_tools if clean_tools else NOT_GIVEN,
         )
 
-    ## Process multiple tool calls and add their responses to messages.
+    # Process multiple tool calls and add their responses to messages.
     def _process_tool_calls(self, tool_calls: List[Any]) -> None:
         """
         Process multiple tool calls and add their responses to messages.
@@ -161,55 +171,35 @@ class Agent:
             except json.JSONDecodeError:
                 args = {}
 
+            # Get the main argument for context
+            main_arg = ""
+            if args:
+                # Common argument names that provide context
+                context_keys = ['file_path', 'command', 'query', 'path', 'target_file']
+                for key in context_keys:
+                    if key in args:
+                        value = str(args[key])
+                        if len(value) > 60:
+                            value = value[:57] + "..."
+                        main_arg = f": {value}"
+                        break
+
+            # Show executing
+            show_tool_executing(tool_call.function.name, main_arg)
+
+            # Execute the tool
             tool_call_response = self._execute_tool_call(tool_call)
 
-            # Determine status
+            # Show completion
             response_str = str(tool_call_response["tool_response"])
             if (
                 response_str.startswith("Error:")
                 or response_str.startswith("Error executing tool")
                 or response_str.startswith("Error parsing tool arguments")
             ):
-                status = "error"
-                status_icon = "❌"
-                status_color = "red"
-                error_msg = tool_call_response['tool_response']
+                show_tool_complete("error", tool_call_response['tool_response'])
             else:
-                status = "success"
-                status_icon = "✅"
-                status_color = "green"
-                error_msg = None
-
-            # Create tool info table (matching CLI format exactly)
-            table = Table(show_header=False, show_lines=True, box=None, padding=(0, 1))
-            table.add_column("Field", style="bold cyan", width=12)
-            table.add_column("Value", style="white")
-            
-            table.add_row("Tool", f"[bold]{tool_call.function.name}[/bold]")
-            table.add_row("Status", f"[{status_color}]{status_icon} {status.title()}[/{status_color}]")
-            
-            # Add arguments if provided
-            if args:
-                for key, value in args.items():
-                    # Truncate long values
-                    str_value = str(value)
-                    if len(str_value) > 50:
-                        str_value = str_value[:47] + "..."
-                    table.add_row(key.title(), str_value)
-            
-            # Add error message if provided
-            if error_msg:
-                table.add_row("Error", f"[red]{error_msg}[/red]")
-            
-            # Display in panel (matching CLI format exactly)
-            panel = Panel(
-                table,
-                title=f"🛠️  Tool Execution",
-                border_style="bright_blue",
-                padding=(0, 1)
-            )
-            
-            console.print(panel)
+                show_tool_complete("success")
 
             # Update and display todo state if this was a todo tool
             if tool_call.function.name in ["create_todo_list", "update_todo_list"]:
@@ -252,7 +242,7 @@ class Agent:
                 }
             )
 
-    ## Execute a single tool call and return the response.
+    # Execute a single tool call and return the response.
     def _execute_tool_call(self, tool_call: Any) -> Dict[str, Any]:
         """
         Execute a single tool call and return the response.
@@ -288,7 +278,7 @@ class Agent:
             "tool_response": tool_response,
         }
 
-    ## Set the system prompt for the agent if not already set.
+    # Set the system prompt for the agent if not already set.
     def _set_system_prompt(self, system_prompt: str) -> None:
         """
         Set the system prompt for the agent if not already set.

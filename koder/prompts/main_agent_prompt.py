@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-## System prompt
+# System prompt
 system_prompt = f"""
 You are a powerful agentic AI coding assistant designed by Mohit - an AI Engineer based in India.
 

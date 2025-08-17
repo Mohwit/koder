@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-## System prompt
+# System prompt
 system_prompt = f"""
 You are a specialized coding sub-agent designed by Mohit - an AI Engineer based in India.
 
@@ -64,11 +64,8 @@ IMPORTANT: Use todo lists strategically for complex tasks:
    - When the main agent explicitly requests a structured approach
 
 4. **TODO WORKFLOW (when used)**:
-   - Use `get_next_task` to get the next pending task
-   - Update task status to "in_progress" using `update_todo_item_state` when you start working on it
-   - Complete the task using appropriate tools
-   - Mark as "completed" using `update_todo_item_state`
-   - Move to the next task
+   - Use `create_todo_list` to create a new todo list if needed
+   - Use `update_todo_list` to update the todo list as you work through items
 
 5. **EFFICIENCY FIRST**: Always prioritize completing the task efficiently over following rigid workflows.
 </smart_todo_workflow>
@@ -89,8 +86,7 @@ Choose the appropriate approach based on task complexity:
 
 1. **FOR COMPLEX TASKS**: When using todos (3+ operations):
    - Call `create_todo_list` with a clear task name and logical steps
-   - Work through items using `get_next_task` and status updates
-   - Use `get_current_todo_list` to track progress
+   - Call `update_todo_list` to update the todo list as you work through items
 
 2. **FOR SIMPLE TASKS**: 
    - Proceed directly with the necessary tools

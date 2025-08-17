@@ -11,7 +11,7 @@ def sub_agent(query: str) -> Agent:
     from koder.tools.tools_schema import tools_schema # noqa: F401
 
     agent = Agent(
-        model="claude-3-7-sonnet-20250219",
+        model="claude-sonnet-4-20250514",
         base_url="https://api.anthropic.com/v1",
         api_key=os.getenv("ANTHROPIC_API_KEY"),
         system_prompt=system_prompt,

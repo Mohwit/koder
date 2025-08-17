@@ -3,7 +3,7 @@ This module contains functions to construct queries for the main agent.
 """
 from koder.tools.search import search_similar_code
 
-## add context to the user prompt
+# Add context to the user prompt
 def construct_query(user_prompt: str) -> str:
     """
     Construct a query for main agent by adding context to the user prompt.
