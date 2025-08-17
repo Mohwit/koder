@@ -1,10 +1,16 @@
 """Agent module for handling OpenAI API interactions with tool calling support."""
 
 import json
+import os
 from typing import Any, List, Dict, Optional, Union
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from openai._types import NOT_GIVEN
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+
+console = Console()
 
 
 ## Agent class
@@ -35,6 +41,9 @@ class Agent:
         self.tools = tools or []
         self.kwargs = kwargs
         self._client = OpenAI(api_key=self.api_key, base_url=self.base_url)
+        self.current_todo_state = None  # Track current todo list
+        self.todo_displayed = False  # Track if static todo is displayed
+        self.todo_lines_count = 0  # Track number of lines in todo display
 
         # Create a mapping of tool names to their callable functions
         self._tool_functions = {}
@@ -45,6 +54,40 @@ class Agent:
                 callable_func = func_info.get("callable")
                 if name and callable_func:
                     self._tool_functions[name] = callable_func
+
+    def _display_todo_list(self):
+        """Display current todo list in a clean table format with colors."""
+        if not self.current_todo_state:
+            return
+        
+        items = self.current_todo_state.get("items", [])
+        
+        if not items:
+            return  # Don't show anything if no tasks exist
+        
+        task_desc = self.current_todo_state.get("task_description", "Tasks")
+        
+        console.print(f"\n┌─ 📋 {task_desc}")
+        console.print("│")
+        
+        for item in items:
+            name = item.get("name", "")
+            status = item.get("status", "pending")
+            
+            if status == "completed":
+                bullet = "●"  # solid circle for completed
+                # Strike through completed tasks
+                console.print(f"│  [dim]{bullet} [strikethrough]{name}[/strikethrough][/dim]")
+            elif status == "in_progress":
+                bullet = "◐"  # half-filled circle for in-progress
+                # Green color for current task
+                console.print(f"│  [green]{bullet} {name}[/green]")
+            else:
+                bullet = "○"  # hollow circle for pending
+                # Normal display for pending tasks
+                console.print(f"│  {bullet} {name}")
+        
+        console.print("└" + "─" * (len(task_desc) + 5))
 
     ## Query the agent with the provided user prompt.
     ## Continues conversation until final response is received.
@@ -67,10 +110,16 @@ class Agent:
                 continue
 
             # If no tool calls, this is the final response
-            return {
+            final_response = {
                 "content": response.choices[0].message.content or "",
                 "tool_calls": response.choices[0].message.tool_calls or None,
             }
+            
+            # Display todo list at the end if it exists
+            if self.current_todo_state:
+                self._display_todo_list()
+            
+            return final_response
 
     ## Make an API call to the OpenAI client.
     def _make_api_call(self) -> Any:
@@ -106,29 +155,88 @@ class Agent:
         Process multiple tool calls and add their responses to messages.
         """
         for i, tool_call in enumerate(tool_calls, 1):
-            print(
-                f"\n🛠️  Executing tool {i}/{len(tool_calls)}: {tool_call.function.name}"
-            )
-
-            # Parse and display arguments
+            # Parse arguments first
             try:
                 args = json.loads(tool_call.function.arguments)
-                print(f"   📋 Arguments: {args}")
             except json.JSONDecodeError:
-                print("❌ Failed to parse arguments")
+                args = {}
 
             tool_call_response = self._execute_tool_call(tool_call)
 
-            # Show execution result status - check if it's an actual error message
+            # Determine status
             response_str = str(tool_call_response["tool_response"])
             if (
                 response_str.startswith("Error:")
                 or response_str.startswith("Error executing tool")
                 or response_str.startswith("Error parsing tool arguments")
             ):
-                print(f"   ❌ Failed: {tool_call_response['tool_response']}")
+                status = "error"
+                status_icon = "❌"
+                status_color = "red"
+                error_msg = tool_call_response['tool_response']
             else:
-                print("✅ Success")
+                status = "success"
+                status_icon = "✅"
+                status_color = "green"
+                error_msg = None
+
+            # Create tool info table (matching CLI format exactly)
+            table = Table(show_header=False, show_lines=True, box=None, padding=(0, 1))
+            table.add_column("Field", style="bold cyan", width=12)
+            table.add_column("Value", style="white")
+            
+            table.add_row("Tool", f"[bold]{tool_call.function.name}[/bold]")
+            table.add_row("Status", f"[{status_color}]{status_icon} {status.title()}[/{status_color}]")
+            
+            # Add arguments if provided
+            if args:
+                for key, value in args.items():
+                    # Truncate long values
+                    str_value = str(value)
+                    if len(str_value) > 50:
+                        str_value = str_value[:47] + "..."
+                    table.add_row(key.title(), str_value)
+            
+            # Add error message if provided
+            if error_msg:
+                table.add_row("Error", f"[red]{error_msg}[/red]")
+            
+            # Display in panel (matching CLI format exactly)
+            panel = Panel(
+                table,
+                title=f"🛠️  Tool Execution",
+                border_style="bright_blue",
+                padding=(0, 1)
+            )
+            
+            console.print(panel)
+
+            # Update and display todo state if this was a todo tool
+            if tool_call.function.name in ["create_todo_list", "update_todo_list"]:
+                if isinstance(tool_call_response["tool_response"], dict):
+                    new_state = tool_call_response["tool_response"]
+                    
+                    if tool_call.function.name == "create_todo_list":
+                        # For create, replace completely
+                        self.current_todo_state = new_state
+                    else:
+                        # For update, merge with existing state
+                        if self.current_todo_state:
+                            # Update task description
+                            self.current_todo_state["task_description"] = new_state.get("task_description", self.current_todo_state.get("task_description", ""))
+                            
+                            # Merge items - update existing items or add new ones
+                            existing_items = {item["name"]: item for item in self.current_todo_state.get("items", [])}
+                            
+                            for new_item in new_state.get("items", []):
+                                existing_items[new_item["name"]] = new_item
+                            
+                            self.current_todo_state["items"] = list(existing_items.values())
+                        else:
+                            self.current_todo_state = new_state
+                    
+                    # Display the updated todo list immediately
+                    self._display_todo_list()
 
             # Ensure tool response is a string for OpenAI API compatibility
             tool_response_content = tool_call_response["tool_response"]

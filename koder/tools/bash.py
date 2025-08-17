@@ -81,6 +81,81 @@ def _modify_find_command(command: str) -> str:
     return command
 
 
+def _is_read_only_command(command: str) -> bool:
+    """
+    Check if a command is read-only (safe to execute without confirmation).
+    
+    Parameters:
+        command (str): The command to check
+        
+    Returns:
+        bool: True if command is read-only, False if it requires confirmation
+    """
+    # Strip leading/trailing whitespace and convert to lowercase for checking
+    cmd = command.strip().lower()
+    
+    # List of read-only command patterns
+    read_only_patterns = [
+        r'^ls\b',           # ls commands
+        r'^find\b',         # find commands
+        r'^grep\b',         # grep commands
+        r'^cat\b',          # cat commands
+        r'^head\b',         # head commands
+        r'^tail\b',         # tail commands
+        r'^less\b',         # less commands
+        r'^more\b',         # more commands
+        r'^wc\b',           # word count
+        r'^du\b',           # disk usage
+        r'^df\b',           # disk free
+        r'^ps\b',           # process status
+        r'^top\b',          # top command
+        r'^htop\b',         # htop command
+        r'^who\b',          # who command
+        r'^whoami\b',       # whoami command
+        r'^pwd\b',          # print working directory
+        r'^which\b',        # which command
+        r'^whereis\b',      # whereis command
+        r'^locate\b',       # locate command
+        r'^file\b',         # file type command
+        r'^stat\b',         # stat command
+        r'^date\b',         # date command
+        r'^uptime\b',       # uptime command
+        r'^uname\b',        # system info
+        r'^env\b',          # environment variables
+        r'^echo\b',         # echo command (usually safe)
+        r'^type\b',         # type command
+        r'^history\b',      # command history
+        r'^tree\b',         # tree command
+        r'^awk\b.*print',   # awk print commands
+        r'^sed\b.*-n',      # sed with -n (no output modification)
+        r'^sort\b',         # sort command (when just displaying)
+        r'^uniq\b',         # uniq command
+        r'^cut\b',          # cut command
+        r'^tr\b',           # tr command (in pipes, usually safe)
+    ]
+    
+    # Check if command matches any read-only pattern
+    for pattern in read_only_patterns:
+        if re.search(pattern, cmd):
+            # Additional safety checks for write operations
+            write_indicators = ['>', 'rm ', 'mv ', 'cp ', 'mkdir', 'rmdir', 'touch', 'chmod', 'chown']
+            
+            # If command has write indicators, it's not read-only
+            if any(indicator in command.lower() for indicator in write_indicators):
+                return False
+            
+            # If command has complex chaining, be more careful
+            if '&&' in command or ';' in command:
+                # Split by command separators and check each part
+                parts = re.split(r'[;&]', command)
+                return all(_is_read_only_command(part.strip()) for part in parts if part.strip())
+            
+            # Simple pipe commands are usually safe for read operations
+            return True
+    
+    return False
+
+
 def _is_command_safe(command: str) -> tuple[bool, str]:
     """
     Check if a command is safe to execute.
@@ -165,18 +240,23 @@ def execute_bash_command(
             error_msg = f"Command blocked for security reasons: {reason}"
             return error_msg
 
-        # Interactive confirmation with simple, consistent CLI styling
-        console = Console()
-        panel = Panel(
-            f"[bold]Tool:[/bold] execute_bash_command\n[bold]Command:[/bold] {command}",
-            title="🛠️ Tool Confirmation",
-            border_style="bright_red",
-            padding=(0, 1)
-        )
-        console.print(panel)
-        user_input = console.input("[bold yellow]Type 'Y' or 'y' to execute this command:[/bold yellow] ").strip().lower()
-        if user_input != 'y':
-            return "Command not executed: user did not confirm."
+        # Check if command is read-only (skip confirmation for read commands)
+        is_read_only = _is_read_only_command(command)
+        
+        if not is_read_only:
+            # Interactive confirmation only for write/destructive commands
+            console = Console()
+            panel = Panel(
+                f"[bold]Tool:[/bold] execute_bash_command\n[bold]Command:[/bold] {command}",
+                title="🛠️ Tool Confirmation",
+                border_style="bright_red",
+                padding=(0, 1)
+            )
+            console.print(panel)
+            user_input = console.input("[bold yellow]Type 'Y' or 'y' to execute this command:[/bold yellow] ").strip().lower()
+            if user_input != 'y':
+                return "Command not executed: user did not confirm."
+        # Read-only commands execute automatically without confirmation
     
 
         # Modify find commands to exclude common directories
