@@ -8,6 +8,8 @@ import time
 from typing import Dict, Optional
 
 from dotenv import load_dotenv
+from rich.console import Console
+from rich.panel import Panel
 
 load_dotenv()
 
@@ -163,8 +165,16 @@ def execute_bash_command(
             error_msg = f"Command blocked for security reasons: {reason}"
             return error_msg
 
-        # Interactive confirmation
-        user_input = input("Type 'Y' or 'y' to execute the command: ").strip().lower()
+        # Interactive confirmation with simple, consistent CLI styling
+        console = Console()
+        panel = Panel(
+            f"[bold]Tool:[/bold] execute_bash_command\n[bold]Command:[/bold] {command}",
+            title="🛠️ Tool Confirmation",
+            border_style="bright_red",
+            padding=(0, 1)
+        )
+        console.print(panel)
+        user_input = console.input("[bold yellow]Type 'Y' or 'y' to execute this command:[/bold yellow] ").strip().lower()
         if user_input != 'y':
             return "Command not executed: user did not confirm."
     
