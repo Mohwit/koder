@@ -1,18 +1,132 @@
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "N"]
+ignore = ["E501"]  # Ignore line too long
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+check_untyped_defs = true
+show_error_codes = true
+pretty = true
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+skip-string-normalization = true
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.venv
+  | build
+  | dist
+)/
+'''
+
+# Minimal PEP 621 project metadata and CLI entry point
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
 [project]
 name = "koder"
 version = "0.1.0"
-description = ""
-authors = [
-    {name = "mohwits@gmail.com"}
-]
-license = {text = "Apache-2.0 license"}
+description = "AI-powered coding assistant with RAG capabilities and tool integration"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = [
-    "openai (>=1.93.0,<2.0.0)"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Mohit Singh", email = "mohit@example.com" }
+]
+keywords = ["ai", "coding-assistant", "cli", "rag", "code-analysis"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
+# Core runtime dependencies for the koder CLI tool
+dependencies = [
+    # CLI framework and user interface
+    "click>=8.0.0",
+    "typer>=0.16.0",
+    "rich>=14.0.0",
+    
+    # AI/ML and API clients
+    "openai>=1.0.0",
+    "anthropic>=0.49.0",
+    
+    # RAG and vector search
+    "coderag @ git+https://github.com/Mohwit/coderag.git",
+    "chromadb>=0.6.0",
+    "sentence-transformers>=4.0.0",
+    
+    # Environment and configuration
+    "python-dotenv>=1.0.0",
+    
+    # File monitoring and async operations
+    "watchfiles>=0.21.0",
+    
+    # Data processing
+    "pydantic>=2.0.0",
+    
+    # Code parsing and analysis
+    "tree-sitter>=0.24.0",
+    "tree-sitter-python>=0.23.0",
+    "tree-sitter-javascript>=0.23.0",
+    "tree-sitter-typescript>=0.23.0",
+    "tree-sitter-java>=0.23.0",
+]
 
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+# Optional dependencies for development and enhanced features
+[project.optional-dependencies]
+dev = [
+    # Code formatting and linting
+    "black>=25.0.0",
+    "ruff>=0.12.0",
+    "mypy>=1.17.0",
+    
+    # Build tools
+    "build>=1.2.0",
+    "hatchling>=1.18.0",
+]
+
+# Enhanced ML features (optional)
+ml = [
+    "torch>=2.0.0",
+    "transformers>=4.0.0",
+    "numpy>=1.20.0",
+    "scikit-learn>=1.0.0",
+]
+
+# Web interface (optional)
+web = [
+    "fastapi>=0.100.0", 
+    "uvicorn>=0.20.0",
+]
+
+# All optional dependencies
+all = [
+    "black>=25.0.0",
+    "ruff>=0.12.0", 
+    "mypy>=1.17.0",
+    "build>=1.2.0",
+    "hatchling>=1.18.0",
+    "torch>=2.0.0",
+    "transformers>=4.0.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/Mohwit/koder"
+
+[project.scripts]
+koder = "koder.main:main"
